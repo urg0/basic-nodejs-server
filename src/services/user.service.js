@@ -1,68 +1,89 @@
-const db = require("../../db");
+const { Op } = require("sequelize");
+const User = require("../models/user.model");
 
 class UserService {
   async getAllUsers() {
-    const query = "SELECT * FROM users WHERE deleted_at IS NULL ORDER BY id";
-    const result = await db.query(query);
-
-    const totalCount = result.rowCount;
-    const users = result.rows;
+    /*"SELECT * FROM users WHERE deleted_at IS NULL ORDER BY id"; */
+    const users = await User.findAll({
+      where: { deleted_at: null },
+      order: [["id", "ASC"]],
+    });
+    const totalCount = users.length;
 
     return { totalCount, users };
   }
 
   async getUserByUsername(searchQuery) {
-    const query =
-      "SELECT * FROM users WHERE username LIKE $1 AND deleted_at IS NULL ORDER BY id";
+    /*"SELECT * FROM users WHERE username LIKE $1 AND deleted_at IS NULL ORDER BY id"; */
+    const users = await User.findAll({
+      where: {
+        username: {
+          [Op.like]: `%${searchQuery}%`,
+        },
+        deleted_at: null,
+      },
+      order: [["id", "ASC"]],
+    });
 
-    const values = [`%${searchQuery}%`];
-    const result = await db.query(query, values);
-
-    return result.rows;
+    return users;
   }
 
   async addUser(userData) {
-    const { username, name, surname, email, password, phone_number, address } =
-      userData;
+    // const { username, name, surname, email, password, phone_number, address } =
+    //   userData;
 
-    const query =
-      "INSERT INTO users (username, name, surname, email, password, phone_number, address) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *";
-    const values = [
-      username,
-      name,
-      surname,
-      email,
-      password,
-      phone_number,
-      address,
-    ];
+    // const query =
+    //   "INSERT INTO users (username, name, surname, email, password, phone_number, address) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *";
+    // const values = [
+    //   username,
+    //   name,
+    //   surname,
+    //   email,
+    //   password,
+    //   phone_number,
+    //   address,
+    // ];
 
-    const result = await db.query(query, values);
+    // const result = await db.query(query, values);
 
-    return result.rows[0];
+    // return result.rows[0];
+    const user = await User.create(userData);
+    return user;
   }
 
   async softDeleteUser(id) {
-    const query =
+    /* const query =
       "UPDATE users SET deleted_at = NOW() WHERE id = $1 RETURNING *";
 
     const values = [id];
     const result = await db.query(query, values);
 
-    return result.rows[0];
+    return result.rows[0]; */
+    const user = await User.findByPk(id);
+
+    if (user) {
+      user.deleted_at = new Date();
+      await user.save();
+    }
+    return user;
   }
 
   async deleteUser(id) {
-    const query = "DELETE FROM users WHERE id = $1 RETURNING * ";
+    /* const query = "DELETE FROM users WHERE id = $1 RETURNING * ";
+
+    const user = await User.findByPk(id);
 
     const values = [id];
     const result = await db.query(query, values);
 
-    return result.rows[0];
+    return result.rows[0]; */
+    const user = await User.destroy({ where: { id }, returning: true });
+
+    return user;
   }
 
   async updateUser(id, userData) {
-    const { username, name, surname, email, password, phone_number, address } =
+    /* const { username, name, surname, email, password, phone_number, address } =
       userData;
     const query = `
       UPDATE users 
@@ -73,6 +94,18 @@ class UserService {
 
     const result = await db.query(query);
     return result.rows[0];
+  } */
+
+    const [updated] = await User.update(userData, {
+      where: { id },
+      returning: true,
+    });
+
+    if (updated) {
+      const updatedUser = await User.findByPk(id);
+      return updatedUser;
+    }
+    throw new Error("User not found");
   }
 }
 

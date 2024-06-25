@@ -1,5 +1,5 @@
 const express = require("express");
-const db = require("./db");
+const { syncDatabase } = require("./src/config/database");
 const dotenv = require("dotenv");
 
 const bodyParser = require("body-parser");
@@ -15,7 +15,13 @@ app.use(bodyParser.json());
 
 app.use("/users", UserRoutes);
 
-app.listen(PORT, () => {
-  console.log(`welcome`);
-  console.log(`Server is running on port ${PORT}`);
-});
+const startServer = async () => {
+  await syncDatabase();
+
+  app.listen(PORT, () => {
+    console.log(`welcome`);
+    console.log(`Server is running on port ${PORT}`);
+  });
+};
+
+startServer();
